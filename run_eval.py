@@ -316,7 +316,35 @@ def compare(path_a: str, path_b: str) -> int:
     вердикт (поле "cases": id і passed). Код повернення:
       0 — порівнювані: set_hash однаковий і різниться не більше однієї умови;
       1 — не порівнювані."""
-    raise NotImplementedError("КРОК 6: compare() ще не написано")
+    a, b = (json.loads(Path(x).read_text(encoding="utf-8")) for x in (path_a, path_b))
+    differ = [f for f in CONDITIONS if a.get(f) != b.get(f)]
+    print(f"{'поле':<16} {'A':<24} {'B':<24}")
+    for f in VERSION_FIELDS:
+        mark = "" if f == "elapsed" else ("≠" if f in differ else "=")
+        print(f"{f:<16} {str(a.get(f)):<24} {str(b.get(f)):<24} {mark}".rstrip())
+    print(f"{'passed/failed':<16} {str(a.get('passed')) + '/' + str(a.get('failed')):<24} "
+          f"{str(b.get('passed')) + '/' + str(b.get('failed')):<24}")
+    va = {c["id"]: c["passed"] for c in a.get("cases", [])}
+    vb = {c["id"]: c["passed"] for c in b.get("cases", [])}
+    flipped = [(i, va[i], vb[i]) for i in va if i in vb and va[i] != vb[i]]
+    if flipped:
+        print("кейси, що змінили вердикт:")
+        for i, x, y in flipped:
+            print(f"  {i}: {'pass' if x else 'FAIL'} -> {'pass' if y else 'FAIL'}")
+    else:
+        print("кейси, що змінили вердикт: немає")
+    only = sorted(set(va) ^ set(vb))
+    if only:
+        print(f"кейси лише в одному записі: {', '.join(only)}")
+    if "set_hash" in differ:
+        print("НЕ порівнювані: різний set_hash, набори різні")
+        return 1
+    if len(differ) > 1:
+        print(f"НЕ порівнювані: змінилося {len(differ)} умов ({', '.join(differ)})")
+        return 1
+    print(f"порівнювані: змінилася одна умова — {differ[0]}" if differ
+          else "порівнювані: умови однакові, різниця — шум")
+    return 0
 
 
 
