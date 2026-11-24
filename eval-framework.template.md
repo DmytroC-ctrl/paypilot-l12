@@ -12,8 +12,8 @@
 
 | Що прогнозуєте | Зараз | Після лабораторної |
 | --- | --- | --- |
-| Скільки команд ви запускаєте руками, щоб отримати повну картину по наборах L03–L11 | \<…\> | \<…\> |
-| Скільки з шести полів версії у вашому останньому звіті кажуть правду | \<…\> | \<…\> |
+| Скільки команд ви запускаєте руками, щоб отримати повну картину по наборах L03–L11 | **13** лише для профілю `clean` (L03 1 · L04 1 · L05 1 · L06 1 · L07 2 — `build_mock.py` + сценарії · L08 2 — `l05_dialogs` + `B4` · L09 1 · L10 1 — `calibrate_run.py` · L11 3 — `tests/manual`, `tests/generated`, `run_mutants.py --set all`), у 8 різних теках, плюс ще ≈7 для зламаних профілів `lesson-0N`. Зведення немає: кожна тека пише звіт у власному форматі | \<…\> |
+| Скільки з шести полів версії у вашому останньому звіті кажуть правду | **3 з 6.** Останній звіт — `paypilot-l09-eval/reports/calibration-l09_labels-20261117T193948.json` (L10): правдиві `set_hash` (`2d1d3f2aa880`, sha256 байтів файлу), `judge_model` (`ollama:qwen2.5:7b`, лише тег без дайджесту), `rubric_version` (`rubric.v1`); `prompt_version`, `stand_prompt_label`, `profile` відсутні. В останньому звіті ранера (`l09_escalation-clean-20261110T192021.json`) полів 5, але `prompt_version: base.v1` — мітка, зашита в стенді, а не файл промпту; `stand_prompt_label` немає | \<…\> |
 
 **Що змінилося і що це означає (одне речення):** \<…\>
 
@@ -26,13 +26,34 @@
 | Скрипт / команда | Заняття | Компонент | Вхід | Вихід | Примітка |
 | --- | --- | --- | --- | --- | --- |
 | `loader.py`, `load(path)` | L03 | dataset manager | шлях до `.jsonl` | список валідованих кейсів | приклад формату |
-| \<…\> | \<…\> | \<dataset manager / eval runner / assertion engine / result storage / reporting\> | \<…\> | \<…\> | \<…\> |
-| \<…\> | \<…\> | \<…\> | \<…\> | \<…\> | \<…\> |
-| \<…\> | \<…\> | \<…\> | \<…\> | \<…\> | \<…\> |
-| \<…\> | \<…\> | \<…\> | \<…\> | \<…\> | \<…\> |
-| \<…\> | \<…\> | \<…\> | \<…\> | \<…\> | \<…\> |
+| `loader.py`, `set_hash(path)`, `summarise(cases)` | L03 | dataset manager | шлях до `.jsonl` / список кейсів | sha256[:12] байтів файлу / зведення покриття | хеш по байтах: CRLF змінює його (крок 2) |
+| `docker compose run --rm eval --dry-run` → `cli.py` → `validate.py` | L03 | dataset manager | `SET` (один набір) | у stdout: `set_hash` і зведення | нічого не викликає; кілька наборів не вміє; у `run_eval.py` — `dry_run()` + `calls_planned()` |
+| `generate_from_engines.py` (`> sets/_generated.jsonl`) | L03, L05 | dataset manager | рушії стенду (fx, limits, disputes) | кейси `.jsonl` | будує набір, а не читає його |
+| `generate_golden.py` | L03 (ДЗ L02) | dataset manager | — | `golden.jsonl` | у кіті L12 немає, лишився в `paypilot-l03-eval` |
+| `docker compose run --rm [-e SET=…] eval [--profile … --only … --gate … --repeat N --traces --brief]` → `cli.py`, `main(argv)` | L03–L09 | **не компонент** (запускач) | прапори CLI | змінні `SET`/`CASE`/`GATE`/`REPEAT`/`TRACES` + `stand.set_profile()` + виклик `runner.main()` | прапори → env → підпроцес; поки `--profile` перемикає стенд, `DEFECTS` він не знає. У L12 замінений `run_eval.py` |
+| `runner.main()` (`python runner.py`) | L03–L09 | **кілька речей одразу:** dataset manager + eval runner + assertion engine + result storage + reporting | `SET`, `GATE`, `CASE`, профіль стенду | рядки в консоль, `reports/<set>-<profile>-<stamp>.json`, код 0/1 | сам вантажить набір (`load`), проганяє (`run_case`), оцінює (`evaluate`), друкує підсумок, пише запис. Ціль розділу: розрізати |
+| `runner.py`, `run_case(case)` / `_one_run(case)` | L03–L09 | eval runner | кейс | відповіді, трейс, `runs`-деталі, вердикт | `run_case` ще й викликає `evaluate` і ловить `JudgeUnavailable` → теж змішує runner з assertion engine |
+| `runner.py`, `evaluate(case, results)` / `_apply(name, …)` | L03–L09 | assertion engine | кейс + `results` (відповідь, трейс) | `Verdict` | **виняток:** гілка `state_row` робить `stand.state(table)` — HTTP усередині перевірки; гілка `judge` теж ходить у модель |
+| `assertions.py`: `level1_exact` … `level7_judge`, `tool_*`, `state_row` | L03–L07 | assertion engine | відповідь / трейс / рядки стану | `Verdict(passed, level, name, detail)` | чисті функції без HTTP; драбина з 7 рівнів + перевірки інструментів |
+| `stand.py` (`chat`, `dialog`, `trace`, `state`, `set_profile`, `set_defects`, `reset`, `prompt_version`) | L03–L09 | eval runner (клієнт стенду) | HTTP-виклики на `:8000` | відповідь, трейс, рядки БД | не окремий компонент, а те, чого assertion engine знати не повинен |
+| `judge.py`, `judge()` / `verdict()` (`python judge.py` — перевірка зв'язку) | L09, L10 | assertion engine (рівень 7) | питання, відповідь, рубрика, `JUDGE_MODEL` | `{verdict, quote, …, rubric_version, judge_prompt_version}` | викликається з `runner._judge`; запуск як скрипта — «окремий вхід» |
+| `console.py`, `case_lines()`, `failed_line()`, `brief_line()` | L05, L06 | reporting | кейс + рядок результату | текст у термінал | лише друк; запису не робить |
+| `runner.py` → `REPORTS_DIR / f"{set}-{profile}-{stamp}.json"` | L03–L09 | result storage | словник запису (`prompt_version`, `set_hash`, `profile`, `judge_model`, `rubric_version`, `elapsed`, `cases`) | один `reports/*.json` | сидить усередині `main()`, окремої функції немає; у L12 — `write_record()` |
+| `docker compose run --rm eval --set <name> --profile <p>` | L03–L09 | див. `runner.main()` | — | — | це одна й та сама точка входу, не нова: рядок для повноти історії команд |
+| `tools/calibrate_run.py <set>` (напр. `l09_labels`, `l09_step5_pairs`) | L10 | окремий вхід | розмічений набір, `JUDGE_MODEL`, `RUNS`, `TEMP` | `reports/calibration-<set>-<stamp>.json` (узгодженість, Wilson, `quote_found`) | калібрує суддю, а не агента; свій формат запису без `profile`/`prompt_version` |
+| `tools/compare_judges.py A.json B.json` | L10 | окремий вхід | два калібрувальні записи | таблиця «узгодженість ± інтервал» | порівнює судді, а не прогони; `set_hash` мають збігатися |
+| `build_mock.py` (`docker compose run --rm --entrypoint python eval build_mock.py`) | L07 | dataset manager (фікстури) | відповіді інструментів | `mock/*` для сценаріїв | межовий випадок: це не кейси, а дані для оракулів |
+| `run_step.py --scenario S1 [--condition --runs --gate --json]` | L07, L08 (B4) | **кілька речей одразу:** eval runner + assertion engine + reporting (+ result storage через `--json`) | `scenarios/*.json`, `--condition`, `--runs` | рядки `S1 baseline run 1 pass…`, необов'язковий `--json` | свій формат сценаріїв, а не `.jsonl`-набір; перевірки `check(a, tree)` усередині ранера |
+| `run_dialog.py` (ранер діалогів L08) | L08 | eval runner (за описом; кодом не перевірено) | набір діалогів `l05_dialogs` | запис прогону з витратами | ⚠ файлу немає ні в `l08/`, ні в кіті L12: лежить на VIS-01. Заповнити вхід/вихід і примітку з нього |
+| `pytest tests/manual`, `pytest tests/generated` (`docker compose run --rm kit pytest tests/…`) | L11 | окремий вхід | тека `tests/manual` / `tests/generated` у `L11_DIR` | код повернення pytest, рядок підсумку | не набір кейсів; у L12 їх викликає `run_eval.unit_tests()` і кладе в блок `unit_tests` запису |
+| `tools/run_mutants.py --set manual\|generated\|all` (`--check`) | L11 | окремий вхід (**кілька речей:** runner + assertion + storage + reporting для мутантів) | `mutants.toml`, набір тестів | `reports/mutants-<set>-<stamp>.json`: `mutation_score`, `survived` | сам застосовує мутанта, ганяє pytest, рахує, друкує й пише звіт |
+| `tools/generation_summary.py reports/generation.json` | L11 | окремий вхід (reporting) | запис генерації тестів | зведення в stdout | читає готовий запис |
+| `python scripts/doctor.py` (у `paypilot-stand`) | L03–L09 | окремий вхід (перевірка стенду) | стенд на `:8000` | OK / що не так | компонентом контуру не є: перевіряє середовище |
+| `api.sh GET\|PUT /api/_test/…` | L05, L06 | окремий вхід (ручне керування стендом) | метод, шлях, JSON | відповідь стенду | `curl`-обгортка; у контурі її роль мають `stand.set_*` |
+| `run_eval.py`: `load_cases()` / `run_case()` / `assert_case()` / `write_record()` / `compare()` | L12 | dataset manager / eval runner / assertion engine / result storage / reporting | див. розділ «Компоненти контуру» | — | каркас кроків 2–6: п'ять функцій — п'ять компонентів; `main()` їх лише з'єднує |
 
-**Скрипти, які роблять кілька речей одразу, і де ці частини в `run_eval.py`:** \<…\>
+
+**Скрипти, які роблять кілька речей одразу, і де ці частини в `run_eval.py`:** `runner.main()` (L03–L09): завантаження набору → `load_cases()`, прогін кейса → `run_case()`, вердикт → `assert_case()`, запис → `write_record()`, друк підсумку → `compare()`/`_print_row()`. Також `run_step.py` (L07) і `run_mutants.py` (L11): ранер + перевірка + звіт в одному файлі. Окремо: `cli.py` — не п'ять компонентів і не шостий, а запускач, який переводить прапори в змінні оточення.
 
 ### Компоненти контуру
 
@@ -54,20 +75,20 @@
 
 | Поле | Значення |
 | --- | --- |
-| Точка входу до кейсів | \<функція\> |
-| Що хешується | \<…\> |
-| Алгоритм і довжина хешу в записі | \<…\> |
-| Тести `step2` | \<скільки зелених з 6\> |
+| Точка входу до кейсів | `run_eval.load_cases(names, gate, only)` → `(кейси, set_hash)` |
+| Що хешується | самі кейси (`_raw_cases`) тих `id`, що пішли в прогін після `GATE`/`CASE`: `json.dumps(sort_keys=True, ensure_ascii=False, separators=(",", ":"))`, рядки за відсортованими `id`, склеєні через `\n`. Не байти файлів, не шляхи, не час |
+| Алгоритм і довжина хешу в записі | sha256, перші 12 символів |
+| Тести `step2` | 6 з 6 зелені |
 
 &nbsp;
 
 | Перевірка | `set_hash` до | `set_hash` після | Змінився? | Очікувано |
 | --- | --- | --- | --- | --- |
-| Дописано тестовий кейс у `sets/l03.jsonl` | \<…\> | \<…\> | так / ні | так |
-| Файл збережено з кінцями рядків CRLF | \<…\> | \<…\> | так / ні | ні |
-| Тестовий кейс видалено | \<…\> | \<…\> | так / ні | хеш повернувся до першого |
+| Дописано тестовий кейс у `sets/l03.jsonl` | `2eeadf91c793` | `fddcf0a402ce` | так | так |
+| Файл збережено з кінцями рядків CRLF | `fddcf0a402ce` | `fddcf0a402ce` | ні | ні |
+| Тестовий кейс видалено | `fddcf0a402ce` | `2eeadf91c793` | так | хеш повернувся до першого |
 
-**Якщо результат не збігся з очікуваним — що виправили:** \<…\>
+**Якщо результат не збігся з очікуваним — що виправили:** усе збіглося з першого разу, виправляти не довелося. Збігається з еталоном: `SET=l03` → `2eeadf91c793`, увесь щоденний контур (`SET=all`, `GATE=daily`) → `58cf5b498718`. Файл `sets/l03.jsonl` повернуто через `git checkout`
 
 ---
 
