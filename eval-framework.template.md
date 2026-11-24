@@ -98,21 +98,21 @@
 
 | Перевірка | Як перевірили | Результат |
 | --- | --- | --- |
-| `run_eval.py` — одна точка входу для всіх наборів | \<команда\> | так / ні |
-| Assertion engine приймає словник результатів оракулів | \<сигнатура\> | так / ні |
-| Ранер збирає словник, assertion лише читає (жодного HTTP у перевірці) | \<…\> | так / ні |
-| Суддя не потрапляє в щоденний шар (поле `gate`) | \<`--dry-run` і `GATE=all --dry-run`: що побачили\> | так / ні |
-| `tests/manual/` і `tests/generated/` — окремий вхід, а не набір кейсів | \<рядок unit-тестів у `--dry-run`\> | так / ні |
+| `run_eval.py` — одна точка входу для всіх наборів | `docker compose run --rm eval` (`SET=all` за замовчуванням: l03–l08 і l12 в одному записі) | так |
+| Assertion engine приймає словник результатів оракулів | `assert_case(case, answer, oracles: dict)` | так |
+| Ранер збирає словник, assertion лише читає (жодного HTTP у перевірці) | `collect_oracles(stand, case, run)` у розділі eval runner ходить у `stand.state()`; `assert_case` → `joint_checks(oracles)` отримує лише словник, `stand` туди не передається | так |
+| Суддя не потрапляє в щоденний шар (поле `gate`) | `--dry-run`: щоденний шар — 71 кейс, виклики судді 0; `GATE=all --dry-run`: 90 кейсів, 40 викликів судді (8 кейсів × 5 прогонів), усі в релізних | так |
+| `tests/manual/` і `tests/generated/` — окремий вхід, а не набір кейсів | у `--dry-run` окремий рядок `unit-тести L11: manual — 7, generated — 48`, у таблиці наборів їх немає; у записі — блок `unit_tests` | так |
 
-**Словник оракулів для `JNT-026`** *(ключі, які зібрав ранер; рядок `SKIP` із прогону `SET=l12`)*: \<…\>
+**Словник оракулів для `JNT-026`** *(ключі, які зібрав ранер; рядок `SKIP` із прогону `SET=l12`)*: `engine:disputes`, `tool:check_dispute_eligibility`, `state:customers`, `state:disputes` (рядок `SKIP`: «КРОК 5: joint_checks() ще не написано; оракули зібрано: engine:disputes, tool:check_dispute_eligibility, state:customers, state:disputes»; код повернення 1, 1 виклик агента, $0.0009)
 
 **Вивід `--dry-run`:**
 
 | Шар | Кейсів | Викликів агента | Викликів судді |
 | --- | --- | --- | --- |
-| щоденний (`GATE=daily`) | \<…\> | \<…\> | 0 |
-| усі (`GATE=all`) | \<…\> | \<…\> | \<…\> |
-| unit-тести L11 | manual \<…\>, generated \<…\> | — | — |
+| щоденний (`GATE=daily`) | 71 | 72 | 0 |
+| усі (`GATE=all`) | 90 | 264 | 40 |
+| unit-тести L11 | manual 7, generated 48 | — | — |
 
 ---
 

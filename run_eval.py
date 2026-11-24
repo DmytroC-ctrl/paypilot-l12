@@ -151,7 +151,17 @@ def collect_oracles(stand, case: dict, run: dict) -> dict:
     уже словник. Якщо агент викликав check_dispute_eligibility кілька разів, беріть
     перший виклик саме цього інструмента (у трейсі є й інші). Якщо не викликав, покладіть None: це теж
     результат, і спільна перевірка має його прочитати."""
-    raise NotImplementedError("КРОК 3: collect_oracles() ще не написано")
+    meta, ctx = case["additional_metadata"], case["context"]
+    tool = next((c["result"] for c in stand.tool_calls(run.get("trace") or {})
+                 if c["name"] == "check_dispute_eligibility"), None)
+    return {
+        "engine:disputes": meta["engine"],
+        "tool:check_dispute_eligibility": tool,
+        "state:customers": [r for r in stand.state("customers")
+                            if r["id"] == ctx["customer_id"]],
+        "state:disputes": [r for r in stand.state("disputes")
+                           if r["transaction_id"] == ctx["transaction_id"]],
+    }
 
 
 
