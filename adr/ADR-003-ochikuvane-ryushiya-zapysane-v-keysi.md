@@ -1,6 +1,6 @@
 # ADR-003: очікуване рушія записується в кейс, assertion не викликає рушій на прогоні
 
-Status: proposed
+Status: accepted
 
 Context
   Рушії (`app.engines.fx`, `limits`, `disputes`, `policy`) — окрема логіка стенду, яку assertion

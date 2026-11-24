@@ -1,6 +1,6 @@
 # ADR-001: set_hash рахується від вмісту кейсів, що пішли в прогін, а не від байтів файлів
 
-Status: proposed
+Status: accepted
 
 Context
   Dataset manager віддає ранеру кейси з кількох файлів `sets/*.jsonl` після фільтрів GATE і CASE.
