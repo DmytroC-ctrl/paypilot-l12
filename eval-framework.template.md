@@ -289,9 +289,11 @@ Alternatives
 | Unit-тести L11 запускаються тією самою командою (блок `unit_tests`: `manual.exit_code` і `generated.exit_code` — `0`) | так (`manual.exit_code` 0, `generated.exit_code` 0) |
 | Усі 20 тестів кроків зелені | так (`pytest tests -q` на чистому клоні: 20 passed) |
 
+*Код `run_eval.py` після прогону чистого клона не змінювався (різниця з `953c3ea` порожня), тож запис `run-20261124T183624Z.json` є доказом, повторний прогін не потрібен.*
+
 **Опційна частина:** мутанти L11 як окремий вхід · ADR про те, чому він не входить у щоденний шар: немає (не написано) · додаткове поле запису: `stand_prompt_label` — зловило мітку стенду `base.v1` на промпті `base.v4` · узагальнена версія шаблону: ні
 
-**Додатки:** `run_eval.py` · `reports/<v1>.json` · `reports/<v4>.json` · `reports/<clean, SET=l12>.json` · `reports/<D26>.json` · `reports/<чистий клон>.json` · `adr/`
+**Додатки:** `run_eval.py` · `reports/run-20261124T182047Z.json` (v1) · `reports/run-20261124T182350Z.json` (v4) · `reports/run-20261124T182917Z.json` (clean, SET=l12) · `reports/run-20261124T182923Z.json` (D26) · `reports/run-20261124T183624Z.json` (чистий клон) · `adr/`
 
 ---
 
