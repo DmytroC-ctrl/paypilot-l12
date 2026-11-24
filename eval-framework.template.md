@@ -156,24 +156,24 @@
 | --- | --- |
 | Кейс | `JNT-026`: `CUS-0006`, `TX-0601`, goods not received |
 | Команди | `-e SET=l12` і `-e SET=l12 -e DEFECTS=D26` |
-| Звідки assertion бере стан | \<…\> |
-| Хто наповнює словник оракулів | \<…\> |
+| Звідки assertion бере стан | зі словника `oracles`, який передає `assert_case` → `joint_checks(oracles)`; сам assertion у стенд не ходить |
+| Хто наповнює словник оракулів | ранер: `collect_oracles(stand, case, run)` у `run_case` (рушій — з кейса, інструмент — з трейсу, клієнт і спори — зі `stand.state()`) |
 
 **Три рядки звіту:**
 
 | Рядок | Рівень | `clean` | `DEFECTS=D26` |
 | --- | --- | --- | --- |
-| `disputes_window_ok` | \<…\> | \<pass / FAIL\> | \<pass / FAIL\> |
-| `compliance_hold_flag` | \<…\> | \<pass / FAIL\> | \<pass / FAIL\> |
-| `cross_dispute_under_hold` | \<…\> | \<pass / FAIL\> | \<pass / FAIL\> |
+| `disputes_window_ok` | 1 | pass | pass |
+| `compliance_hold_flag` | 1 | pass | pass |
+| `cross_dispute_under_hold` | 4 | pass | **FAIL** |
 
 *Очікувано: на `clean` усі `pass`; з `D26` дві окремі `pass`, спільна `FAIL`.*
 
-**Що читає спільна assertion (одне речення):** \<які джерела зі словника вона читає і за якої умови падає\>
+**Що читає спільна assertion (одне речення):** `engine:disputes`, `tool:check_dispute_eligibility` і `state:disputes`; падає, коли рушій каже `eligible=False`, а інструмент каже `eligible=True` або в `disputes` є рядок по `TX-0601` (досить будь-якого з двох). Записи: clean — `reports/run-20261124T182917Z.json` (`engine: eligible=False · tool: eligible=False · disputes rows: 0`), D26 — `reports/run-20261124T182923Z.json` (`engine: eligible=False · tool: eligible=True · disputes rows: 1`); після прогону `active: []`
 
 **Знахідки в наборі** *(необов'язково: кейси, червоні не через агента, і чому)*: \<…\>
 
-**Відповідь агента з `D26`** *(перші 200 символів із запису)*: \<…\>
+**Відповідь агента з `D26`** *(перші 200 символів із запису)*: Your dispute for transaction TX-0601 is open (dispute ID: 1, status: open).\n\n- **Reason:** Goods not received\n- **Transaction date:** 16 August 2026\n- **Dispute window:** The eligibility check passed.
 
 **Ще одна пара джерел PayPilot, де можливий клас «кожен правий, разом ні»** *(необов'язково)*: \<…\>
 
